@@ -1,0 +1,4 @@
+tests/main.lua
+tests/dialogue.lua
+tests/full_load.lua
+tests/README.md
