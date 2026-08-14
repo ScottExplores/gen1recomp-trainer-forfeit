@@ -1,8 +1,9 @@
 -- Trainer Forfeit & Rematches
 --
 -- RUN may be bought for ¥200 in ordinary trainer encounters.  After an
--- ordinary map trainer has been defeated, talking to that same NPC offers a
--- rematch without clearing story flags or replaying one-time rewards.
+-- ordinary map trainer or Gym Leader has been safely completed, talking to
+-- that NPC offers a rematch without clearing story flags or replaying
+-- one-time rewards.
 
 local COST = 200
 local PATCH_KEY = "_trainerForfeitPaidRun"
@@ -24,6 +25,58 @@ local SPECIAL_CLASSES = {
   OPP_SABRINA = true, OPP_BLAINE = true, OPP_GIOVANNI = true,
   OPP_LORELEI = true, OPP_BRUNO = true, OPP_AGATHA = true,
   OPP_LANCE = true,
+}
+
+-- Gym Leaders use map-owned talk scripts rather than the generic trainer
+-- after-text path.  Keep this whitelist exact so rivals, Rocket bosses, the
+-- Dojo Master, and Elite Four battles can never enter the rematch path.
+-- Giovanni's required farewell hides him permanently, so his completed
+-- rematch is offered by the Viridian Gym guide without respawning him.
+local GYM_REMATCHES = {
+  PEWTER_GYM_obj_1 = {
+    map = "PEWTER_GYM", index = 1, name = "PEWTERGYM_BROCK",
+    text = "TEXT_PEWTERGYM_BROCK", trainerClass = "OPP_BROCK",
+    partyIndex = 1, after = "_PewterGymBrockPostBattleAdviceText",
+  },
+  CERULEAN_GYM_obj_1 = {
+    map = "CERULEAN_GYM", index = 1, name = "CERULEANGYM_MISTY",
+    text = "TEXT_CERULEANGYM_MISTY", trainerClass = "OPP_MISTY",
+    partyIndex = 1, after = "_CeruleanGymMistyTM11ExplanationText",
+  },
+  VERMILION_GYM_obj_1 = {
+    map = "VERMILION_GYM", index = 1, name = "VERMILIONGYM_LT_SURGE",
+    text = "TEXT_VERMILIONGYM_LT_SURGE", trainerClass = "OPP_LT_SURGE",
+    partyIndex = 1, after = "_VermilionGymLTSurgePostBattleAdviceText",
+  },
+  CELADON_GYM_obj_1 = {
+    map = "CELADON_GYM", index = 1, name = "CELADONGYM_ERIKA",
+    text = "TEXT_CELADONGYM_ERIKA", trainerClass = "OPP_ERIKA",
+    partyIndex = 1, after = "_CeladonGymErikaPostBattleAdviceText",
+  },
+  FUCHSIA_GYM_obj_1 = {
+    map = "FUCHSIA_GYM", index = 1, name = "FUCHSIAGYM_KOGA",
+    text = "TEXT_FUCHSIAGYM_KOGA", trainerClass = "OPP_KOGA",
+    partyIndex = 1, after = "_FuchsiaGymKogaPostBattleAdviceText",
+  },
+  SAFFRON_GYM_obj_1 = {
+    map = "SAFFRON_GYM", index = 1, name = "SAFFRONGYM_SABRINA",
+    text = "TEXT_SAFFRONGYM_SABRINA", trainerClass = "OPP_SABRINA",
+    partyIndex = 1, after = "_SaffronGymSabrinaPostBattleAdviceText",
+  },
+  CINNABAR_GYM_obj_1 = {
+    map = "CINNABAR_GYM", index = 1, name = "CINNABARGYM_BLAINE",
+    text = "TEXT_CINNABARGYM_BLAINE", trainerClass = "OPP_BLAINE",
+    partyIndex = 1, after = "_CinnabarGymBlainePostBattleAdviceText",
+  },
+  VIRIDIAN_GYM_obj_10 = {
+    map = "VIRIDIAN_GYM", index = 10, name = "VIRIDIANGYM_GYM_GUIDE",
+    text = "TEXT_VIRIDIANGYM_GYM_GUIDE", trainerClass = "OPP_GIOVANNI",
+    partyIndex = 3, after = "_ViridianGymGuidePostBattleText",
+    giovanniGuide = true, identityId = "VIRIDIAN_GYM_obj_1",
+    identityName = "VIRIDIANGYM_GIOVANNI",
+    alternateFlag = "EVENT_BEAT_VIRIDIAN_GYM_GIOVANNI",
+    x = 2, y = 1, question = "Challenge GIOVANNI\nagain?",
+  },
 }
 
 local function traceback(err)
@@ -107,8 +160,8 @@ return function(mod)
   end
 
   local feature = {
-    installed = true, version = "0.2.1", cost = COST,
-    rematches = true, dialogue = false,
+    installed = true, version = "0.3.0", cost = COST,
+    rematches = true, gymLeaders = true, dialogue = false,
     optionDefaults = {
       rematches = DEFAULT_OPTIONS.rematches,
       adaptive_dialogue = DEFAULT_OPTIONS.adaptive_dialogue,
@@ -167,6 +220,98 @@ return function(mod)
     return true
   end
 
+  local function positiveAmount(value)
+    local numeric = tonumber(value)
+    if numeric ~= nil then return numeric > 0 end
+    return value == true
+  end
+
+  local function memoryNpc(npc, target)
+    if not target or not target.identityId then return npc end
+    local d = npc and npc.def or {}
+    return {
+      id = target.identityId, mapId = target.map,
+      cellX = target.x or (npc and npc.cellX),
+      cellY = target.y or (npc and npc.cellY),
+      def = {
+        x = target.x or d.x, y = target.y or d.y,
+        name = target.identityName or target.name,
+        trainerClass = target.trainerClass,
+        trainerParty = target.partyIndex,
+      },
+    }
+  end
+
+  -- A Gym Leader is ready only after every one-time reward step is settled.
+  -- EVENT_GOT_TM* remains false when the bag was full; in that state the
+  -- vanilla talk script must run so the leader can retry the TM handoff.
+  local function completedGymLeader(ow, npc)
+    local d = npc and npc.def
+    local target = npc and GYM_REMATCHES[npc.id] or nil
+    local game = okGame and Game or nil
+    local save = game and game.save
+    if not (target and type(d) == "table" and ow and ow.map
+        and ow.map.id == target.map and d.index == target.index
+        and d.name == target.name
+        and d.text == target.text and type(save) == "table") then
+      return nil
+    end
+
+    if target.giovanniGuide then
+      if d.trainerClass ~= nil then return nil end
+      local mapToggles = save.objectToggles
+        and save.objectToggles.VIRIDIAN_GYM or nil
+      if not mapToggles or mapToggles.VIRIDIANGYM_GIOVANNI ~= false then
+        return nil
+      end
+    elseif d.trainerClass ~= target.trainerClass
+        or (d.trainerParty or 1) ~= target.partyIndex then
+      return nil
+    end
+
+    local reward = victories[target.trainerClass .. "#"
+      .. tostring(target.partyIndex)]
+    local flags = save.flags or {}
+    local inventory = save.inventory or {}
+    local leaderBeaten = type(reward) == "table" and reward.flag
+      and flags[reward.flag] == true
+    if not leaderBeaten and target.alternateFlag then
+      leaderBeaten = flags[target.alternateFlag] == true
+    end
+    if type(reward) ~= "table" or reward.badge == nil
+        or reward.flag == nil or reward.gotFlag == nil
+        or not leaderBeaten
+        or flags[reward.gotFlag] ~= true
+        or not positiveAmount(inventory[reward.badge]) then
+      return nil
+    end
+    if not (okScripts and mapScripts
+        and type(mapScripts.talkScript) == "function"
+        and mapScripts.talkScript(ow.map.id, d.text)) then
+      return nil
+    end
+    return {
+      kind = "gym_leader", map = target.map,
+      trainerClass = target.trainerClass,
+      partyIndex = target.partyIndex, after = target.after,
+      identityId = target.identityId, name = target.name,
+      identityName = target.identityName,
+      x = target.x, y = target.y, question = target.question,
+    }
+  end
+
+  local function rematchTarget(ow, npc)
+    if ordinaryTrainer(ow, npc) and ow:trainerDefeated(npc) then
+      local d = npc.def
+      return {
+        kind = "ordinary", map = ow.map and ow.map.id,
+        trainerClass = d.trainerClass,
+        partyIndex = d.trainerParty or 1,
+      }
+    end
+    return completedGymLeader(ow, npc)
+  end
+
   local function overworldFor(npc)
     local ow = okGame and Game.overworld or nil
     if ow and ow.map and npc then return ow end
@@ -204,6 +349,7 @@ return function(mod)
     local record = {
       owner = mod.id, rawOriginal = rawget(battle, "tryRun"),
       original = original, npc = engagement.npc,
+      turnAway = engagement.turnAway ~= false,
     }
     local function tryRun(self)
       self.phase = "messages"
@@ -219,7 +365,7 @@ return function(mod)
         save.money = money - COST
         self.paidTrainerForfeit = true
         local npc = record.npc
-        if type(npc) == "table" and OPPOSITE[npc.facing] then
+        if record.turnAway and type(npc) == "table" and OPPOSITE[npc.facing] then
           npc.facing = OPPOSITE[npc.facing]
         end
         self:say("Paid ¥200.\nBattle forfeited!")
@@ -234,13 +380,15 @@ return function(mod)
     return true
   end
 
-  local function startRematch(ow, npc)
+  local function startRematch(ow, npc, target)
     local game = okGame and Game or nil
-    local d = npc and npc.def
-    if not (game and d) then
+    if not (game and npc and target) then
       if npc then npc.frozen = false end
       return
     end
+    local trainerClass = target.trainerClass
+    local partyIndex = target.partyIndex or 1
+    local rememberedNpc = memoryNpc(npc, target)
     if not hasHealthyParty(game) then
       local TextBox = require("src.render.TextBox")
       game.stack:push(TextBox.new(game, "You need a healthy\nPOKEMON first!",
@@ -249,17 +397,19 @@ return function(mod)
     end
 
     if dialogue and type(dialogue.beforeRematch) == "function" then
-      pcall(dialogue.beforeRematch, dialogue, game, npc, d.trainerClass,
-            d.trainerParty or 1)
+      pcall(dialogue.beforeRematch, dialogue, game, rememberedNpc,
+            trainerClass, partyIndex)
     end
 
     local BattleState = require("src.battle.BattleState")
     local engagement = {
-      npc = npc, trainerClass = d.trainerClass, partyIndex = d.trainerParty or 1,
+      npc = npc, memoryNpc = rememberedNpc,
+      trainerClass = trainerClass, partyIndex = partyIndex,
+      turnAway = target.kind == "ordinary",
     }
     constructingRematch = engagement
     local ok, battle = xpcall(function()
-      return BattleState.newTrainer(game, d.trainerClass, d.trainerParty)
+      return BattleState.newTrainer(game, trainerClass, partyIndex)
     end, traceback)
     constructingRematch = nil
     if not ok then
@@ -273,13 +423,14 @@ return function(mod)
       kind = "trainer_encounter",
       map = ow.map and ow.map.id,
       npcId = npc.id,
-      trainerClass = d.trainerClass,
-      partyIndex = d.trainerParty or 1,
+      trainerClass = trainerClass,
+      partyIndex = partyIndex,
+      trainerForfeitIdentity = rememberedNpc.id,
       trainerForfeitRematch = true,
     }
     rematchBattles[battle] = engagement
     battle.onFinish = function(result)
-      recordBattle(game, npc, d.trainerClass, d.trainerParty or 1, result, {
+      recordBattle(game, rememberedNpc, trainerClass, partyIndex, result, {
         isRematch = true, paidForfeit = battle.paidTrainerForfeit == true,
       })
       rematchBattles[battle] = nil
@@ -298,33 +449,35 @@ return function(mod)
     end
     worldPatch = { owner = mod.id, active = true, original = OverworldState.talkTo }
     worldPatch.wrapper = function(ow, npc, ...)
-      if not worldPatch.active or option("rematches") ~= true
-          or not ordinaryTrainer(ow, npc)
-          or not ow:trainerDefeated(npc) then
+      local target = worldPatch.active and option("rematches") == true
+        and rematchTarget(ow, npc) or nil
+      if not target then
         return worldPatch.original(ow, npc, ...)
       end
       npc.frozen = true
       npc:facePlayer(ow.player)
-      local d = npc.def
       local header = headerFor(ow, npc)
-      local baseText = header and header.after and Game.data.text[header.after]
+      local baseText = target.after and Game.data.text[target.after]
+        or (header and header.after and Game.data.text[header.after])
         or "I've been training\nsince our last battle!"
       local journey
+      local rememberedNpc = memoryNpc(npc, target)
       if option("adaptive_dialogue") == true
           and dialogue and type(dialogue.context) == "function" then
-        local ok, context = pcall(dialogue.context, dialogue, Game, npc,
-                                  d.trainerClass, d.trainerParty or 1)
+        local ok, context = pcall(dialogue.context, dialogue, Game,
+                                  rememberedNpc, target.trainerClass,
+                                  target.partyIndex)
         if ok and type(context) == "table" then journey = context.text end
       end
       local question = baseText
       if journey and journey ~= "" and journey ~= baseText then
         question = question .. "\f" .. journey
       end
-      question = question .. "\fWant a rematch?"
+      question = question .. "\f" .. (target.question or "Want a rematch?")
       local TextBox = require("src.render.TextBox")
       Game.stack:push(TextBox.new(Game, question, nil, {
         choice = function(yes)
-          if yes then startRematch(ow, npc) else npc.frozen = false end
+          if yes then startRematch(ow, npc, target) else npc.frozen = false end
         end,
       }))
     end
@@ -351,21 +504,26 @@ return function(mod)
           return false
         end
         local npc = ow.npcPool and ow.npcPool[origin.npcId] or nil
-        if not npc or not ordinaryTrainer(ow, npc)
-            or not ow:trainerDefeated(npc) then
+        local target = npc and rematchTarget(ow, npc) or nil
+        local rememberedNpc = target and memoryNpc(npc, target) or nil
+        local originIdentity = origin.trainerForfeitIdentity or origin.npcId
+        if not target or target.trainerClass ~= origin.trainerClass
+            or target.partyIndex ~= (origin.partyIndex or 1)
+            or not rememberedNpc or rememberedNpc.id ~= originIdentity then
           return false
         end
-        local d = npc.def
         local engagement = {
-          npc = npc, trainerClass = d.trainerClass,
-          partyIndex = d.trainerParty or 1,
+          npc = npc, memoryNpc = rememberedNpc,
+          trainerClass = target.trainerClass,
+          partyIndex = target.partyIndex,
+          turnAway = target.kind == "ordinary",
         }
         battle.trainerForfeitRematch = true
         rematchBattles[battle] = engagement
         attach(battle, engagement)
         battle.onFinish = function(result)
-          recordBattle(battle.game or Game, npc, d.trainerClass,
-            d.trainerParty or 1, result, {
+          recordBattle(battle.game or Game, rememberedNpc,
+            target.trainerClass, target.partyIndex, result, {
               isRematch = true,
               paidForfeit = battle.paidTrainerForfeit == true,
             })
@@ -393,7 +551,7 @@ return function(mod)
         if option("trainer_growth") == "gentle"
             and dialogue and type(dialogue.rematchBoost) == "function" then
           local ok, descriptor = pcall(dialogue.rematchBoost, dialogue, Game,
-            tag.npc, class, party or 1, built)
+            tag.memoryNpc or tag.npc, class, party or 1, built)
           if ok and type(descriptor) == "table" then
             if type(descriptor.levels) == "table" then
               for rawSlot, rawTarget in pairs(descriptor.levels) do

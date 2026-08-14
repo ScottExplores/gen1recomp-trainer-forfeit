@@ -35,8 +35,77 @@ local headers = {
   [2] = { battle = "BOSS", won = "BOSS_WON", after = "BOSS_AFTER", range = 0 },
   [3] = { battle = "SCRIPT", won = "SCRIPT_WON", after = "SCRIPT_AFTER", range = 0 },
 }
+
+-- These fixtures deliberately mirror the engine's exact Gen I object names,
+-- text constants, battle parties, badges, and completion flags.  A typo in
+-- any whitelist field must fail closed and leave the map-owned script alone.
+local gymLeaders = {
+  {
+    id = "PEWTER_GYM_obj_1", map = "PEWTER_GYM", label = "PewterGym",
+    name = "PEWTERGYM_BROCK", text = "TEXT_PEWTERGYM_BROCK",
+    class = "OPP_BROCK", party = 1, badge = "BOULDERBADGE",
+    flag = "EVENT_BEAT_BROCK", gotFlag = "EVENT_GOT_TM34", item = "TM_BIDE",
+    after = "_PewterGymBrockPostBattleAdviceText", post = "Brock rematch advice",
+  },
+  {
+    id = "CERULEAN_GYM_obj_1", map = "CERULEAN_GYM", label = "CeruleanGym",
+    name = "CERULEANGYM_MISTY", text = "TEXT_CERULEANGYM_MISTY",
+    class = "OPP_MISTY", party = 1, badge = "CASCADEBADGE",
+    flag = "EVENT_BEAT_MISTY", gotFlag = "EVENT_GOT_TM11", item = "TM_BUBBLEBEAM",
+    after = "_CeruleanGymMistyTM11ExplanationText", post = "Misty rematch advice",
+  },
+  {
+    id = "VERMILION_GYM_obj_1", map = "VERMILION_GYM", label = "VermilionGym",
+    name = "VERMILIONGYM_LT_SURGE", text = "TEXT_VERMILIONGYM_LT_SURGE",
+    class = "OPP_LT_SURGE", party = 1, badge = "THUNDERBADGE",
+    flag = "EVENT_BEAT_LT_SURGE", gotFlag = "EVENT_GOT_TM24", item = "TM_THUNDERBOLT",
+    after = "_VermilionGymLTSurgePostBattleAdviceText", post = "Surge rematch advice",
+  },
+  {
+    id = "CELADON_GYM_obj_1", map = "CELADON_GYM", label = "CeladonGym",
+    name = "CELADONGYM_ERIKA", text = "TEXT_CELADONGYM_ERIKA",
+    class = "OPP_ERIKA", party = 1, badge = "RAINBOWBADGE",
+    flag = "EVENT_BEAT_ERIKA", gotFlag = "EVENT_GOT_TM21", item = "TM_MEGA_DRAIN",
+    after = "_CeladonGymErikaPostBattleAdviceText", post = "Erika rematch advice",
+  },
+  {
+    id = "FUCHSIA_GYM_obj_1", map = "FUCHSIA_GYM", label = "FuchsiaGym",
+    name = "FUCHSIAGYM_KOGA", text = "TEXT_FUCHSIAGYM_KOGA",
+    class = "OPP_KOGA", party = 1, badge = "SOULBADGE",
+    flag = "EVENT_BEAT_KOGA", gotFlag = "EVENT_GOT_TM06", item = "TM_TOXIC",
+    after = "_FuchsiaGymKogaPostBattleAdviceText", post = "Koga rematch advice",
+  },
+  {
+    id = "SAFFRON_GYM_obj_1", map = "SAFFRON_GYM", label = "SaffronGym",
+    name = "SAFFRONGYM_SABRINA", text = "TEXT_SAFFRONGYM_SABRINA",
+    class = "OPP_SABRINA", party = 1, badge = "MARSHBADGE",
+    flag = "EVENT_BEAT_SABRINA", gotFlag = "EVENT_GOT_TM46", item = "TM_PSYWAVE",
+    after = "_SaffronGymSabrinaPostBattleAdviceText", post = "Sabrina rematch advice",
+  },
+  {
+    id = "CINNABAR_GYM_obj_1", map = "CINNABAR_GYM", label = "CinnabarGym",
+    name = "CINNABARGYM_BLAINE", text = "TEXT_CINNABARGYM_BLAINE",
+    class = "OPP_BLAINE", party = 1, badge = "VOLCANOBADGE",
+    flag = "EVENT_BEAT_BLAINE", gotFlag = "EVENT_GOT_TM38", item = "TM_FIRE_BLAST",
+    after = "_CinnabarGymBlainePostBattleAdviceText", post = "Blaine rematch advice",
+  },
+}
+
+local giovanni = {
+  leaderId = "VIRIDIAN_GYM_obj_1", guideId = "VIRIDIAN_GYM_obj_10",
+  map = "VIRIDIAN_GYM", label = "ViridianGym",
+  leaderName = "VIRIDIANGYM_GIOVANNI", leaderText = "TEXT_VIRIDIANGYM_GIOVANNI",
+  guideName = "VIRIDIANGYM_GYM_GUIDE", guideText = "TEXT_VIRIDIANGYM_GYM_GUIDE",
+  class = "OPP_GIOVANNI", party = 3, badge = "EARTHBADGE",
+  flag = "EVENT_BEAT_GIOVANNI", gotFlag = "EVENT_GOT_TM27", item = "TM_FISSURE",
+  after = "_ViridianGymGuidePostBattleText", post = "Giovanni rematch advice",
+}
+
 local Game = {
-  save = { money = 500, party = { { hp = 10 } }, defeatedTrainers = {}, flags = {} },
+  save = {
+    money = 500, party = { { hp = 10 } }, defeatedTrainers = {},
+    flags = {}, inventory = {}, objectToggles = {},
+  },
   data = {
     text = { AFTER1 = "I learned a lot!", BOSS_AFTER = "Boss advice",
              SCRIPT_AFTER = "Story aftermath" },
@@ -44,9 +113,33 @@ local Game = {
   },
   stack = { push = function(_, state) textBoxes[#textBoxes + 1] = state end },
 }
+for _, leader in ipairs(gymLeaders) do
+  Game.data.text[leader.after] = leader.post
+end
+Game.data.text[giovanni.after] = giovanni.post
+
 local scripted = { TEXT_SCRIPTED = true }
+for _, leader in ipairs(gymLeaders) do scripted[leader.text] = true end
+scripted[giovanni.leaderText] = true
+scripted[giovanni.guideText] = true
 local mapScripts = { talkScript = function(_, text) return scripted[text] end }
-local victories = { ["OPP_BROCK#1"] = { badge = "BOULDERBADGE" } }
+
+local victories = {}
+for _, leader in ipairs(gymLeaders) do
+  victories[leader.class .. "#" .. leader.party] = {
+    badge = leader.badge, flag = leader.flag,
+    gotFlag = leader.gotFlag, item = leader.item,
+  }
+end
+victories[giovanni.class .. "#" .. giovanni.party] = {
+  badge = giovanni.badge, flag = giovanni.flag,
+  gotFlag = giovanni.gotFlag, item = giovanni.item,
+}
+victories["OPP_GIOVANNI#2"] = { flag = "EVENT_BEAT_SILPH_CO_GIOVANNI" }
+victories["OPP_BLACKBELT#1"] = { flag = "EVENT_BEAT_KARATE_MASTER" }
+victories["OPP_LORELEI#1"] = {
+  flag = "EVENT_BEAT_LORELEIS_ROOM_TRAINER_0",
+}
 
 local Overworld = {}
 function Overworld.talkTo(self, npc)
@@ -95,10 +188,20 @@ local dialogueSource = [[return function(mod)
   local api = {}
   function api:context(game, npc, class, party)
     DIALOGUE_CALLS.context = DIALOGUE_CALLS.context + 1
+    DIALOGUE_CALLS.lastContext = {
+      npcId = npc and npc.id, class = class, party = party,
+      npcName = npc and npc.def and npc.def.name,
+      cellX = npc and npc.cellX, cellY = npc and npc.cellY,
+    }
     return { text = "I saw you beat a trainer nearby!" }
   end
   function api:beforeRematch(game, npc, class, party)
     DIALOGUE_CALLS.before = DIALOGUE_CALLS.before + 1
+    DIALOGUE_CALLS.lastBefore = {
+      npcId = npc and npc.id, class = class, party = party,
+      npcName = npc and npc.def and npc.def.name,
+      cellX = npc and npc.cellX, cellY = npc and npc.cellY,
+    }
   end
   function api:recordBattle(game, npc, class, party, result, extra)
     DIALOGUE_CALLS.record = DIALOGUE_CALLS.record + 1
@@ -106,6 +209,11 @@ local dialogueSource = [[return function(mod)
   end
   function api:rematchBoost(game, npc, class, party, partyDef)
     DIALOGUE_CALLS.boost = DIALOGUE_CALLS.boost + 1
+    DIALOGUE_CALLS.lastBoost = {
+      npcId = npc and npc.id, class = class, party = party,
+      npcName = npc and npc.def and npc.def.name,
+      cellX = npc and npc.cellX, cellY = npc and npc.cellY,
+    }
     if DIALOGUE_MODE.boost == "lower" then
       return { levels = { [1] = 2 }, reason = "lower test", rematches = 1 }
     elseif DIALOGUE_MODE.boost == "bonus" then
@@ -147,19 +255,42 @@ end
 Game.overworld = ow
 Game.stack.push = function(_, state) textBoxes[#textBoxes + 1] = state end
 
-local function npc(id, index, class, text)
+local function npc(id, index, class, text, name, party)
   local n = { id = id, def = { index = index, trainerClass = class,
-    trainerParty = 1, text = text or "TEXT_GENERIC" }, facing = "up", frozen = false }
+    trainerParty = party or 1, text = text or "TEXT_GENERIC", name = name },
+    facing = "up", frozen = false }
   function n:facePlayer() self.faced = true end
   return n
+end
+
+local function selectMap(id, label)
+  ow.map = { id = id, def = { label = label or id } }
+end
+
+local function completeGym(target)
+  Game.save.flags[target.flag] = true
+  Game.save.flags[target.gotFlag] = true
+  Game.save.inventory[target.badge] = 1
+end
+
+local function clearGym(target)
+  Game.save.flags[target.flag] = nil
+  Game.save.flags[target.gotFlag] = nil
+  Game.save.inventory[target.badge] = nil
+end
+
+local function gymNpc(target)
+  return npc(target.id, 1, target.class, target.text,
+    target.name, target.party)
 end
 
 local install = assert(loadfile("main.lua"))()
 local feature = install(mod)
 equal(feature.installed, true, "installer publishes active status")
-equal(feature.version, "0.2.1", "feature reports v0.2.1")
+equal(feature.version, "0.3.0", "feature reports v0.3.0")
 equal(feature.cost, 200, "fee is fixed at Y200")
 equal(feature.rematches, true, "rematch adapter is active")
+equal(feature.gymLeaders, true, "Gym Leader rematch adapter is active")
 equal(feature.dialogue, true, "dialogue helper is active")
 check(Overworld.talkTo ~= rawTalkTo, "talkTo receives guarded wrapper")
 check(Overworld.restoreBattleContinuation ~= rawRestoreBattleContinuation,
@@ -297,32 +428,316 @@ equal(ow.vanillaRestores, 1, "only unmarked checkpoint reached engine restore")
 local normalBuild = BattleState.newTrainer(Game, "OPP_YOUNGSTER", 1)
 equal(normalBuild.builtParty[1].level, 10, "trainer.party boost cannot leak")
 
--- Undefeated ordinary trainers and all special/script-owned trainers delegate.
+-- Undefeated ordinary trainers still delegate.
 local unbeaten = npc("ROUTE_3_obj_2", 1, "OPP_YOUNGSTER")
+selectMap("ROUTE_3", "Route3")
+local talksBeforeUnbeaten = ow.vanillaTalks
 Overworld.talkTo(ow, unbeaten)
-equal(ow.vanillaTalks, 2, "undefeated trainer keeps vanilla engagement")
+equal(ow.vanillaTalks, talksBeforeUnbeaten + 1,
+  "undefeated trainer keeps vanilla engagement")
 
-local boss = npc("PEWTER_GYM_obj_1", 2, "OPP_BROCK")
-Game.save.defeatedTrainers[boss.id] = true
+-- Gym rematches are completion-gated.  A pre-win leader, an unrecorded
+-- badge, or a pending TM handoff always retains the vanilla talk script.
+local brockDef = gymLeaders[1]
+local boss = gymNpc(brockDef)
+selectMap(brockDef.map, brockDef.label)
+ow.npcPool = { [boss.id] = boss }
+clearGym(brockDef)
+Game.save.defeatedTrainers[boss.id] = nil
+
+local talksBeforePreWin = ow.vanillaTalks
 Overworld.talkTo(ow, boss)
-equal(ow.vanillaTalks, 3, "victory/reward trainer is excluded")
+equal(ow.vanillaTalks, talksBeforePreWin + 1,
+  "pre-win Gym Leader delegates to the map script")
 
-local rival = npc("ROUTE_22_obj_1", 1, "OPP_RIVAL1")
-Game.save.defeatedTrainers[rival.id] = true
-Overworld.talkTo(ow, rival)
-equal(ow.vanillaTalks, 4, "rival is excluded")
+Game.save.flags[brockDef.flag] = true
+Game.save.flags[brockDef.gotFlag] = true
+Game.save.inventory[brockDef.badge] = nil
+local talksBeforeMissingBadge = ow.vanillaTalks
+Overworld.talkTo(ow, boss)
+equal(ow.vanillaTalks, talksBeforeMissingBadge + 1,
+  "completed flags without the badge delegate safely")
 
-local scriptedNpc = npc("ROCKET_HIDEOUT_B4F_obj_3", 3, "OPP_ROCKET", "TEXT_SCRIPTED")
-Game.save.defeatedTrainers[scriptedNpc.id] = true
-Overworld.talkTo(ow, scriptedNpc)
-equal(ow.vanillaTalks, 5, "map-script trainer is excluded")
+Game.save.inventory[brockDef.badge] = 1
+Game.save.flags[brockDef.gotFlag] = nil
+Game.save.defeatedTrainers[boss.id] = true
+local talksBeforePendingTM = ow.vanillaTalks
+Overworld.talkTo(ow, boss)
+equal(ow.vanillaTalks, talksBeforePendingTM + 1,
+  "pending Gym Leader TM handoff delegates even with defeatedTrainers set")
 
--- Story-owned engageTrainer emissions cannot arm forfeiting anymore.
-emit("world.trainer_engaged", { npc = boss, trainerClass = boss.def.trainerClass, partyIndex = 1 })
-local bossBattle = BattleState.newTrainer(Game, "OPP_BROCK", 1)
+-- Initial story-owned leader engagements never receive paid RUN.
+emit("world.trainer_engaged", {
+  npc = boss, trainerClass = boss.def.trainerClass, partyIndex = brockDef.party,
+})
+local bossBattle = BattleState.newTrainer(Game, brockDef.class, brockDef.party)
 local bossRun = bossBattle.tryRun
 emit("battle.started", { battle = bossBattle, kind = "trainer" })
-equal(bossBattle.tryRun, bossRun, "leader forfeit is excluded")
+equal(bossBattle.tryRun, bossRun,
+  "initial Gym Leader battle cannot buy a forfeit")
+
+-- Even a completed save fails closed if an exact whitelist field is wrong.
+completeGym(brockDef)
+boss.def.name = "PEWTERGYM_BROCK_TYPO"
+local talksBeforeBadIdentity = ow.vanillaTalks
+Overworld.talkTo(ow, boss)
+equal(ow.vanillaTalks, talksBeforeBadIdentity + 1,
+  "mismatched Gym Leader object identity delegates")
+boss.def.name = brockDef.name
+
+-- Imported completed saves need no defeatedTrainers entry.  Exercise all
+-- seven persistent leaders and assert exact mappings and reward-free wins.
+local leaderNpcs = {}
+for _, target in ipairs(gymLeaders) do
+  local leader = target == brockDef and boss or gymNpc(target)
+  leaderNpcs[target.class] = leader
+  selectMap(target.map, target.label)
+  ow.npcPool = { [leader.id] = leader }
+  clearGym(target)
+  completeGym(target)
+  Game.save.defeatedTrainers[leader.id] = nil
+  Game.save.inventory[target.item] = 3
+  Game.save.objectToggles[target.map] = { REMATCH_SENTINEL = true }
+
+  local talksBefore = ow.vanillaTalks
+  local rewardsBefore = ow.storyRewardReplays or 0
+  Overworld.talkTo(ow, leader)
+  equal(ow.vanillaTalks, talksBefore,
+    target.class .. " completed imported save opens rematch")
+  local leaderPrompt = textBoxes[#textBoxes]
+  check(leaderPrompt.text:find(target.post, 1, true) ~= nil,
+    target.class .. " uses exact post-battle text")
+  check(leaderPrompt.text:find("Want a rematch?", 1, true) ~= nil,
+    target.class .. " uses the normal leader challenge")
+  leaderPrompt.opts.choice(true)
+
+  local battle = pushedBattles[#pushedBattles]
+  equal(battle.oppClass, target.class,
+    target.class .. " launches exact trainer class")
+  equal(battle.partyIndex, target.party,
+    target.class .. " launches exact party")
+  equal(battle.checkpointOrigin.map, target.map,
+    target.class .. " checkpoint records exact Gym map")
+  equal(battle.checkpointOrigin.npcId, target.id,
+    target.class .. " checkpoint records exact NPC")
+  equal(battle.checkpointOrigin.trainerForfeitIdentity, target.id,
+    target.class .. " keeps its own memory identity")
+  equal(dialogueCalls.lastContext.npcId, target.id,
+    target.class .. " journey context uses leader identity")
+  battle.onFinish("win")
+
+  equal(ow.afterResult, "win", target.class .. " win uses safe continuation")
+  equal(ow.afterBattleValue, battle,
+    target.class .. " win returns the rematch battle to overworld")
+  equal(ow.storyRewardReplays or 0, rewardsBefore,
+    target.class .. " win never replays story rewards")
+  equal(Game.save.flags[target.flag], true,
+    target.class .. " win preserves victory flag")
+  equal(Game.save.flags[target.gotFlag], true,
+    target.class .. " win preserves TM completion flag")
+  equal(Game.save.inventory[target.badge], 1,
+    target.class .. " win does not duplicate/remove badge")
+  equal(Game.save.inventory[target.item], 3,
+    target.class .. " win does not duplicate/remove TM")
+  equal(Game.save.objectToggles[target.map].REMATCH_SENTINEL, true,
+    target.class .. " win leaves object toggles untouched")
+  equal(Game.save.defeatedTrainers[leader.id], nil,
+    target.class .. " imported save needs no synthetic defeated marker")
+end
+
+-- A paid forfeit in a leader rematch is also reward-safe and charged once.
+local mistyDef = gymLeaders[2]
+local misty = leaderNpcs[mistyDef.class]
+selectMap(mistyDef.map, mistyDef.label)
+ow.npcPool = { [misty.id] = misty }
+Game.save.money = 1000
+Overworld.talkTo(ow, misty)
+textBoxes[#textBoxes].opts.choice(true)
+local mistyForfeit = pushedBattles[#pushedBattles]
+mistyForfeit:tryRun()
+mistyForfeit.queue[1].callback(true)
+equal(Game.save.money, 800, "Gym Leader rematch forfeit charges exactly Y200 once")
+equal(mistyForfeit.result, "run", "Gym Leader paid forfeit exits neutrally")
+mistyForfeit.onFinish("run")
+equal(Game.save.flags[mistyDef.flag], true,
+  "Gym Leader forfeit preserves victory flag")
+equal(Game.save.flags[mistyDef.gotFlag], true,
+  "Gym Leader forfeit preserves TM completion flag")
+equal(Game.save.inventory[mistyDef.badge], 1,
+  "Gym Leader forfeit preserves badge")
+equal(Game.save.inventory[mistyDef.item], 3,
+  "Gym Leader forfeit cannot duplicate TM")
+equal(Game.save.objectToggles[mistyDef.map].REMATCH_SENTINEL, true,
+  "Gym Leader forfeit leaves object toggles untouched")
+
+-- Marked leader checkpoints restore only when every origin and live-save
+-- identity check matches. Tampering fails closed without reward continuation.
+local kogaDef = gymLeaders[5]
+local koga = leaderNpcs[kogaDef.class]
+selectMap(kogaDef.map, kogaDef.label)
+ow.npcPool = { [koga.id] = koga }
+local leaderRestore = BattleState.newTrainer(Game, kogaDef.class, kogaDef.party)
+local leaderRestoreRawRun = leaderRestore.tryRun
+local leaderOrigin = {
+  kind = "trainer_encounter", map = kogaDef.map, npcId = kogaDef.id,
+  trainerClass = kogaDef.class, partyIndex = kogaDef.party,
+  trainerForfeitIdentity = kogaDef.id, trainerForfeitRematch = true,
+}
+local vanillaBeforeLeaderRestore = ow.vanillaRestores
+equal(Overworld.restoreBattleContinuation(ow, leaderRestore, leaderOrigin), true,
+  "completed Gym Leader checkpoint restores reward-free")
+equal(ow.vanillaRestores, vanillaBeforeLeaderRestore,
+  "Gym Leader restore bypasses reward-bearing engine continuation")
+check(leaderRestore.tryRun ~= leaderRestoreRawRun,
+  "restored Gym Leader rematch retains paid RUN")
+leaderRestore.onFinish("win")
+equal(ow.storyRewardReplays or 0, 0,
+  "restored Gym Leader win cannot replay a story reward")
+
+local function tamperedLeaderRestore(label, patchOrigin)
+  local battle = BattleState.newTrainer(Game, kogaDef.class, kogaDef.party)
+  local rawRun = battle.tryRun
+  local origin = {
+    kind = "trainer_encounter", map = kogaDef.map, npcId = kogaDef.id,
+    trainerClass = kogaDef.class, partyIndex = kogaDef.party,
+    trainerForfeitIdentity = kogaDef.id, trainerForfeitRematch = true,
+  }
+  if patchOrigin then patchOrigin(origin) end
+  local vanillaBefore = ow.vanillaRestores
+  equal(Overworld.restoreBattleContinuation(ow, battle, origin), false,
+    label .. " checkpoint fails closed")
+  equal(ow.vanillaRestores, vanillaBefore,
+    label .. " never delegates to reward-bearing restore")
+  equal(battle.tryRun, rawRun, label .. " never attaches paid RUN")
+end
+
+tamperedLeaderRestore("wrong-map Gym Leader", function(origin)
+  origin.map = "FUCHSIA_CITY"
+end)
+tamperedLeaderRestore("wrong-class Gym Leader", function(origin)
+  origin.trainerClass = "OPP_BROCK"
+end)
+tamperedLeaderRestore("wrong-party Gym Leader", function(origin)
+  origin.partyIndex = 2
+end)
+tamperedLeaderRestore("wrong-NPC Gym Leader", function(origin)
+  origin.npcId = "FUCHSIA_GYM_obj_2"
+end)
+tamperedLeaderRestore("wrong-identity Gym Leader", function(origin)
+  origin.trainerForfeitIdentity = "FUCHSIA_GYM_obj_2"
+end)
+Game.save.flags[kogaDef.gotFlag] = nil
+tamperedLeaderRestore("incomplete-live-save Gym Leader")
+Game.save.flags[kogaDef.gotFlag] = true
+
+-- Giovanni disappears after his required farewell. His direct object and a
+-- guide while he is visible stay map-owned; only the exact hidden-state guide
+-- launches Viridian party #3 with a synthetic Giovanni memory identity.
+selectMap(giovanni.map, giovanni.label)
+clearGym(giovanni)
+completeGym(giovanni)
+-- Cartridge-imported saves use the original event name instead of the
+-- recomp-local victory-table name.  Either completed flag must work, while
+-- the badge, TM flag, and hidden Giovanni state remain mandatory.
+Game.save.flags[giovanni.flag] = nil
+Game.save.flags.EVENT_BEAT_VIRIDIAN_GYM_GIOVANNI = true
+local giovanniNpc = npc(giovanni.leaderId, 1, giovanni.class,
+  giovanni.leaderText, giovanni.leaderName, giovanni.party)
+local guide = npc(giovanni.guideId, 10, nil,
+  giovanni.guideText, giovanni.guideName)
+guide.cellX, guide.cellY = 4, 9
+ow.npcPool = { [giovanniNpc.id] = giovanniNpc, [guide.id] = guide }
+Game.save.objectToggles[giovanni.map] = {
+  VIRIDIANGYM_GIOVANNI = true, REMATCH_SENTINEL = true,
+}
+
+local talksBeforeGiovanni = ow.vanillaTalks
+Overworld.talkTo(ow, giovanniNpc)
+equal(ow.vanillaTalks, talksBeforeGiovanni + 1,
+  "direct Giovanni object always delegates to his story script")
+local talksBeforeVisibleGuide = ow.vanillaTalks
+Overworld.talkTo(ow, guide)
+equal(ow.vanillaTalks, talksBeforeVisibleGuide + 1,
+  "Viridian guide delegates while Giovanni is visible")
+
+Game.save.objectToggles[giovanni.map].VIRIDIANGYM_GIOVANNI = false
+local talksBeforeHiddenGuide = ow.vanillaTalks
+Overworld.talkTo(ow, guide)
+equal(ow.vanillaTalks, talksBeforeHiddenGuide,
+  "hidden Giovanni state enables exact Gym Guide rematch")
+local giovanniPrompt = textBoxes[#textBoxes]
+check(giovanniPrompt.text:find(giovanni.post, 1, true) ~= nil,
+  "Giovanni guide prompt preserves post-battle guidance")
+check(giovanniPrompt.text:find("Challenge GIOVANNI\nagain?", 1, true) ~= nil,
+  "Giovanni guide asks the explicit rematch question")
+giovanniPrompt.opts.choice(true)
+local giovanniBattle = pushedBattles[#pushedBattles]
+equal(giovanniBattle.oppClass, giovanni.class,
+  "Giovanni guide launches OPP_GIOVANNI")
+equal(giovanniBattle.partyIndex, 3,
+  "Giovanni guide launches Viridian party #3")
+equal(giovanniBattle.checkpointOrigin.npcId, giovanni.guideId,
+  "Giovanni checkpoint resumes through the guide object")
+equal(giovanniBattle.checkpointOrigin.trainerForfeitIdentity, giovanni.leaderId,
+  "Giovanni checkpoint records synthetic leader identity")
+equal(dialogueCalls.lastContext.npcId, giovanni.leaderId,
+  "Giovanni journey context uses synthetic leader ID")
+equal(dialogueCalls.lastContext.npcName, giovanni.leaderName,
+  "Giovanni journey context uses synthetic leader name")
+equal(dialogueCalls.lastBefore.npcId, giovanni.leaderId,
+  "Giovanni preparation memory uses synthetic leader ID")
+equal(dialogueCalls.lastBefore.cellX, 2,
+  "Giovanni synthetic memory uses canonical X")
+equal(dialogueCalls.lastBefore.cellY, 1,
+  "Giovanni synthetic memory uses canonical Y")
+giovanniBattle.onFinish("win")
+equal(Game.save.flags[giovanni.flag], nil,
+  "Giovanni rematch does not synthesize the recomp-local victory flag")
+equal(Game.save.flags.EVENT_BEAT_VIRIDIAN_GYM_GIOVANNI, true,
+  "Giovanni rematch preserves the cartridge-imported victory flag")
+equal(Game.save.flags[giovanni.gotFlag], true,
+  "Giovanni rematch win preserves TM completion flag")
+equal(Game.save.inventory[giovanni.badge], 1,
+  "Giovanni rematch win preserves Earth Badge")
+equal(Game.save.objectToggles[giovanni.map].VIRIDIANGYM_GIOVANNI, false,
+  "Giovanni rematch never respawns him")
+equal(Game.save.objectToggles[giovanni.map].REMATCH_SENTINEL, true,
+  "Giovanni rematch leaves unrelated toggles untouched")
+
+local giovanniRestored = BattleState.newTrainer(Game, giovanni.class, 3)
+local giovanniOrigin = {
+  kind = "trainer_encounter", map = giovanni.map, npcId = giovanni.guideId,
+  trainerClass = giovanni.class, partyIndex = 3,
+  trainerForfeitIdentity = giovanni.leaderId,
+  trainerForfeitRematch = true,
+}
+equal(Overworld.restoreBattleContinuation(ow, giovanniRestored, giovanniOrigin), true,
+  "Giovanni guide checkpoint restores with synthetic identity")
+giovanniRestored.onFinish("win")
+
+local tamperedGiovanni = BattleState.newTrainer(Game, giovanni.class, 3)
+giovanniOrigin.trainerForfeitIdentity = giovanni.guideId
+local vanillaBeforeGiovanniTamper = ow.vanillaRestores
+equal(Overworld.restoreBattleContinuation(ow, tamperedGiovanni, giovanniOrigin), false,
+  "tampered Giovanni synthetic identity fails closed")
+equal(ow.vanillaRestores, vanillaBeforeGiovanniTamper,
+  "tampered Giovanni checkpoint never reaches reward-bearing restore")
+
+-- Rivals and other map-script trainers remain excluded.
+selectMap("ROUTE_22", "Route22")
+local rival = npc("ROUTE_22_obj_1", 1, "OPP_RIVAL1")
+Game.save.defeatedTrainers[rival.id] = true
+local talksBeforeRival = ow.vanillaTalks
+Overworld.talkTo(ow, rival)
+equal(ow.vanillaTalks, talksBeforeRival + 1, "rival is excluded")
+
+selectMap("ROCKET_HIDEOUT_B4F", "RocketHideoutB4F")
+local scriptedNpc = npc("ROCKET_HIDEOUT_B4F_obj_3", 3, "OPP_ROCKET", "TEXT_SCRIPTED")
+Game.save.defeatedTrainers[scriptedNpc.id] = true
+local talksBeforeScripted = ow.vanillaTalks
+Overworld.talkTo(ow, scriptedNpc)
+equal(ow.vanillaTalks, talksBeforeScripted + 1,
+  "map-script trainer is excluded")
 
 emit("world.trainer_engaged", { npc = scriptedNpc, trainerClass = "OPP_ROCKET", partyIndex = 1 })
 local storyBattle = BattleState.newTrainer(Game, "OPP_ROCKET", 1)
@@ -330,14 +745,44 @@ local storyRun = storyBattle.tryRun
 emit("battle.started", { battle = storyBattle, kind = "trainer" })
 equal(storyBattle.tryRun, storyRun, "map-script forfeit is excluded")
 
+local function checkStoryBossExcluded(label, mapId, id, class, party, text)
+  selectMap(mapId, mapId)
+  local target = npc(id, 1, class, text or "TEXT_GENERIC", nil, party)
+  Game.save.defeatedTrainers[id] = true
+  local talksBefore = ow.vanillaTalks
+  Overworld.talkTo(ow, target)
+  equal(ow.vanillaTalks, talksBefore + 1,
+    label .. " cannot enter rematch talk")
+
+  emit("world.trainer_engaged", {
+    npc = target, trainerClass = class, partyIndex = party,
+  })
+  local battle = BattleState.newTrainer(Game, class, party)
+  local rawRun = battle.tryRun
+  emit("battle.started", { battle = battle, kind = "trainer" })
+  equal(battle.tryRun, rawRun, label .. " cannot buy a story-battle forfeit")
+  emit("battle.ended", { battle = battle, result = "win" })
+end
+
+checkStoryBossExcluded("Rocket Hideout Giovanni #1", "ROCKET_HIDEOUT_B4F",
+  "ROCKET_HIDEOUT_B4F_obj_4", "OPP_GIOVANNI", 1, "TEXT_SCRIPTED")
+checkStoryBossExcluded("Silph Giovanni #2", "SILPH_CO_11F",
+  "SILPH_CO_11F_obj_1", "OPP_GIOVANNI", 2, "TEXT_SCRIPTED")
+checkStoryBossExcluded("Fighting Dojo Master", "FIGHTING_DOJO",
+  "FIGHTING_DOJO_obj_1", "OPP_BLACKBELT", 1)
+checkStoryBossExcluded("Elite Four Lorelei", "LORELEIS_ROOM",
+  "LORELEIS_ROOM_obj_1", "OPP_LORELEI", 1)
+
 -- Undefeated generic engagement still receives the paid RUN flow.
+selectMap("ROUTE_3", "Route3")
 emit("world.trainer_engaged", { npc = unbeaten, trainerClass = "OPP_YOUNGSTER", partyIndex = 1 })
 local regularBattle = BattleState.newTrainer(Game, "OPP_YOUNGSTER", 1)
 local regularRun = regularBattle.tryRun
 emit("battle.started", { battle = regularBattle, kind = "trainer" })
 check(regularBattle.tryRun ~= regularRun, "ordinary first battle gets forfeit")
+local moneyBeforeDeclined = Game.save.money
 regularBattle:tryRun(); regularBattle.queue[1].callback(false)
-equal(Game.save.money, 300, "declined forfeit remains free")
+equal(Game.save.money, moneyBeforeDeclined, "declined forfeit remains free")
 emit("battle.ended", { battle = regularBattle, result = "win" })
 equal(regularBattle.tryRun, regularRun, "battle end restores original RUN")
 equal(dialogueCalls.last.extra.isRematch, false, "ordinary result is recorded")

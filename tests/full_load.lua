@@ -36,15 +36,16 @@ local run = T.sdk.loadMod("mods/trainer_forfeit", {
 
 T.eq(#run.errors, 0, "Trainer Forfeit & Rematches loads through API-2 loader")
 T.check(run.mod ~= nil, "loader selected Trainer Forfeit & Rematches")
-T.eq(run.mod and run.mod.manifest and run.mod.manifest.version, "0.2.1",
-  "loader selected the v0.2.1 release")
+T.eq(run.mod and run.mod.manifest and run.mod.manifest.version, "0.3.0",
+  "loader selected the v0.3.0 release")
 local status = run.loader.exports.trainer_forfeit
   and run.loader.exports.trainer_forfeit.status
 T.check(type(status) == "table" and status.installed == true,
   "feature status is published")
 T.eq(status and status.cost, 200, "published fee is fixed at ¥200")
-T.eq(status and status.version, "0.2.1", "published feature version matches manifest")
+T.eq(status and status.version, "0.3.0", "published feature version matches manifest")
 T.eq(status and status.rematches, true, "rematch adapter is active")
+T.eq(status and status.gymLeaders, true, "Gym Leader rematches are active")
 T.eq(status and status.dialogue, true, "offline dialogue helper is active")
 T.eq(status and status.optionDefaults and status.optionDefaults.rematches, true,
   "rematches default to enabled")

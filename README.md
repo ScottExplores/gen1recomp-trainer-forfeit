@@ -2,7 +2,7 @@
 
 A standalone Gen1Recomp mod for Red, Blue, and Yellow. It keeps the original
 ¥200 trainer-forfeit feature and lets you revisit defeated ordinary trainers
-for safe rematches with journey-aware dialogue.
+and all eight Gym Leaders for safe rematches with journey-aware dialogue.
 
 ## Features
 
@@ -29,10 +29,29 @@ one-time victory hooks, or other story rewards. Normal battle experience and
 money continue to follow Gen1Recomp's active battle rules and compatible mods.
 The ¥200 RUN option is also available inside an eligible rematch.
 
-Story-scripted encounters are excluded. Rivals, Gym Leaders, Giovanni,
-cutscene battles, trainers with one-time victory rewards, and trainers whose
-conversation is owned by a map script retain their original behavior. Wild,
-Safari, link, static-Pokémon, and demo battles are untouched.
+### Gym Leader rematches
+
+After a Gym Leader's original badge and TM sequence is fully complete, talk to
+Brock, Misty, Lt. Surge, Erika, Koga, Sabrina, or Blaine again to receive the
+same safe rematch prompt. Their first story battle remains completely vanilla:
+the mod does not add paid RUN there and does not interfere with their badge,
+TM, dialogue, or gym-event sequence.
+
+If the bag was full when a leader first tried to give their TM, the mod leaves
+their conversation alone until that TM is successfully received. This keeps
+the original retry path intact instead of accidentally replacing an owed
+reward with a rematch prompt.
+
+Giovanni still gives his farewell and leaves Viridian Gym exactly as intended.
+After he is gone, talk to the permanent Viridian Gym guide to challenge
+Giovanni's Gym roster again. The mod never respawns Giovanni or changes his
+saved hide flag.
+
+Other story-scripted encounters are excluded. Rivals, Rocket-boss Giovanni
+parties, the Fighting Dojo Master, Elite Four, cutscene battles, other trainers
+with one-time victory rewards, and trainers whose conversation is owned by a
+map script retain their original behavior. Wild, Safari, link, static-Pokémon,
+and demo battles are untouched.
 
 ### Offline adaptive dialogue
 
@@ -64,13 +83,14 @@ gentle. All three can be changed without starting a new save.
 
 ## Install or upgrade
 
-Import `trainer_forfeit-0.2.1.zip` through Gen1Recomp's mod manager, enable it,
-and restart the game. Version 0.2.1 keeps the same mod ID as earlier releases,
-so importing it is an upgrade rather than a second mod.
+Install version 0.2.1 or newer once, then open Gen1Recomp's mod manager and use
+**Update** when version 0.3.0 is offered. The updater downloads
+`trainer_forfeit-0.3.0.zip`, keeps the same `trainer_forfeit` mod ID, and
+preserves the mod's settings and journey memory.
 
-Version 0.2.1 is the one-time updater bootstrap release. After it is installed,
-Gen1Recomp can check the public GitHub Releases feed and offer future updates
-from inside the mod manager.
+For a fresh install, import `trainer_forfeit-0.3.0.zip` through the puzzle-piece
+mod manager, enable it, and restart the game. Version 0.2.1 was the one-time
+updater bootstrap, so users already on it do not need to manually move this ZIP.
 
 Do not enable this together with **Scott Mod**, which contains the original
 forfeit feature and declares a conflict with this standalone package.
@@ -80,7 +100,9 @@ Pokémon ROM text or graphics are bundled in the mod.
 
 ## Technical safety notes
 
-The mod wraps only live ordinary-trainer seams and restores its wrappers during
-cleanup. It does not clear base-game progress to manufacture rematches. Its
-memory is stored under Gen1Recomp's per-mod save namespace, and disabling the
-feature leaves the game's normal defeated-trainer data unchanged.
+The mod wraps only live trainer-talk seams and restores its wrappers during
+cleanup. It does not clear base-game progress, respawn story NPCs, or call the
+engine's badge/TM victory continuation to manufacture rematches. Leader
+eligibility requires an exact map, NPC, class, party, victory flag, badge, and
+completed TM handoff. Its memory is stored under Gen1Recomp's per-mod save
+namespace, and disabling the feature leaves normal progress unchanged.

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0 - 2026-08-13
+
+- Adds safe repeat battles for Brock, Misty, Lt. Surge, Erika, Koga,
+  Sabrina, Blaine, and Giovanni after their original badge and TM sequence is
+  fully complete.
+- Preserves every badge, TM, event flag, object toggle, and one-time victory
+  hook by constructing leader rematches directly with a reward-free finish.
+- Keeps the original Gym Leader battle and bag-full TM retry flow completely
+  vanilla. Paid RUN remains unavailable in the first story battle, but is
+  available in the later rematch.
+- Offers Giovanni rematches through the permanent Viridian Gym guide after
+  Giovanni's farewell, without respawning him or changing the saved hide flag.
+- Adds strict Red, Blue, and Yellow leader identity and checkpoint validation
+  so rivals, Rocket bosses, the Dojo Master, Elite Four, and other scripted
+  battles remain excluded.
+
 ## 0.2.1 - 2026-08-13
 
 - Added the public GitHub repository identifier used by Gen1Recomp's built-in

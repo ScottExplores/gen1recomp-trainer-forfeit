@@ -1,7 +1,7 @@
 {
   "id": "trainer_forfeit",
   "name": "Trainer Forfeit & Rematches",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -17,5 +17,5 @@
   "permissions": ["engine_internals"],
   "affects_link": false,
   "github": "ScottExplores/gen1recomp-trainer-forfeit",
-  "description": "Pay ¥200 to forfeit ordinary trainer battles, then revisit defeated trainers for safe rematches with offline journey-aware dialogue."
+  "description": "Pay ¥200 to forfeit ordinary trainer battles, then safely rematch defeated trainers and all eight Gym Leaders with offline journey-aware dialogue."
 }
